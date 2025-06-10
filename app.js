@@ -6,6 +6,7 @@ import dashboardRoutes from "./src/modules/dashboard/routes/dashboard.route.js";
 
 // Cargar variables de entorno
 dotenv.config();
+console.log("dasfdsdfsd")
 
 // Obtener __dirname en ES Modules
 const __filename = fileURLToPath(import.meta.url);
