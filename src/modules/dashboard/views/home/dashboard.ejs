@@ -12,7 +12,7 @@
     }
 
     h1, h2 {
-      color: #333;
+      color: #2c3e50;
     }
 
     canvas {
@@ -21,18 +21,27 @@
     }
 
     .section {
-      margin-top: 40px;
+      margin-top: 30px;
     }
 
-    .screenshot {
-      margin-top: 10px;
-    }
-
-    .screenshot img {
-      max-width: 400px;
-      border: 1px solid #ccc;
+    .info {
+      background: #f9f9f9;
+      padding: 15px;
       border-radius: 5px;
-      margin-bottom: 10px;
+      border-left: 4px solid #3498db;
+      margin-bottom: 15px;
+    }
+
+    ul {
+      list-style-type: none;
+      padding-left: 0;
+    }
+
+    li {
+      padding: 8px;
+      margin: 5px 0;
+      background: #f4f4f4;
+      border-radius: 4px;
     }
 
     pre {
@@ -41,6 +50,29 @@
       border-radius: 5px;
       white-space: pre-wrap;
       word-wrap: break-word;
+    }
+
+    .chat-message {
+      background: #ecf0f1;
+      padding: 10px;
+      border-radius: 5px;
+      margin: 10px 0;
+    }
+
+    .screenshot img {
+      max-width: 400px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    a {
+      color: #3498db;
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
     }
   </style>
 </head>
@@ -51,8 +83,22 @@
   <!-- Datos inyectados desde el backend -->
   <div id="app" style="display:none;" data-api='<%= data %>'></div>
 
+  <!-- Información general -->
+  <div class="section">
+    <h2>📌 Información General</h2>
+    <div class="info" id="meeting-info">Cargando información...</div>
+  </div>
+
   <!-- Gráfico de Participantes -->
   <canvas id="participantsChart" width="400" height="200"></canvas>
+
+  <!-- Sección: Participantes -->
+  <div class="section">
+    <h2>🧾 Participantes</h2>
+    <ul id="participant-list">
+      <li>Cargando participantes...</li>
+    </ul>
+  </div>
 
   <!-- Sección: Transcripción -->
   <div class="section">
@@ -60,12 +106,26 @@
     <pre id="transcription-text">Cargando transcripción...</pre>
   </div>
 
-  <!-- Sección: Capturas de Pantalla -->
+  <!-- Sección: Chat -->
+  <div class="section">
+    <h2>💬 Chat de la Reunión</h2>
+    <div id="chat-container">
+      <p>Cargando mensajes...</p>
+    </div>
+  </div>
+
+  <!-- Sección: Capturas -->
   <div class="section">
     <h2>🖼️ Capturas de la Reunión</h2>
     <div id="screenshot-container">
       <p>Cargando capturas...</p>
     </div>
+  </div>
+
+  <!-- Sección: Grabación -->
+  <div class="section">
+    <h2>📹 Grabación de la Reunión</h2>
+    <p><a href="#" id="recording-link">Descargar grabación</a></p>
   </div>
 
   <script>
@@ -80,58 +140,96 @@
       console.error('Error al parsear los datos:', e);
     }
 
-    if (!dataFromServer || !Array.isArray(dataFromServer.participants)) {
-      console.warn("Datos inválidos o sin participantes");
-    } else {
-      // === Gráfico de Participantes ===
-      const labels = dataFromServer.participants.map((p, i) => `Participante ${i + 1}`);
-      const values = new Array(dataFromServer.participants.length).fill(1);
+    if (!dataFromServer) {
+      document.body.innerHTML = '<h2>⚠️ No se recibieron datos válidos.</h2>';
+      throw new Error('Datos inválidos o nulos');
+    }
 
-      const ctx = document.getElementById('participantsChart').getContext('2d');
-      new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: labels,
-          datasets: [{
-            label: 'Número de Participantes',
-            data: values,
-            backgroundColor: 'rgba(76, 187, 155, 0.6)'
-          }]
+    // === Mostrar info general ===
+    const meetingInfo = document.getElementById('meeting-info');
+    meetingInfo.innerHTML = `
+      <strong>Tema:</strong> ${dataFromServer.topic || 'No disponible'}<br>
+      <strong>Hora de inicio:</strong> ${new Date(dataFromServer.start_time).toLocaleString()}<br>
+      <strong>Hora de finalización:</strong> ${new Date(dataFromServer.end_time).toLocaleString()}<br>
+      <strong>Duración:</strong> ${dataFromServer.duration_minutes} minutos<br>
+      <strong>Host:</strong> ${dataFromServer.host?.name || 'Desconocido'}
+    `;
+
+    // === Gráfico de Participantes ===
+    const ctx = document.getElementById('participantsChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: dataFromServer.participants.map((p, i) => `Participante ${i + 1}`),
+        datasets: [{
+          label: 'Número de Participantes',
+          data: new Array(dataFromServer.participants.length).fill(1),
+          backgroundColor: 'rgba(76, 187, 155, 0.6)'
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false }
         },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: { display: false }
-          },
-          scales: {
-            y: {
-              beginAtZero: true,
-              ticks: {
-                stepSize: 1
-              }
-            }
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: { stepSize: 1 }
           }
         }
-      });
-
-      // === Mostrar Transcripción ===
-      const transcriptionText = document.getElementById('transcription-text');
-      transcriptionText.textContent = dataFromServer.transcription || 'No disponible';
-
-      // === Mostrar Capturas ===
-      const screenshotContainer = document.getElementById('screenshot-container');
-      screenshotContainer.innerHTML = ''; // Limpiar mensaje de carga
-
-      if (Array.isArray(dataFromServer.screenshots)) {
-        dataFromServer.screenshots.forEach(url => {
-          const div = document.createElement('div');
-          div.className = 'screenshot';
-          div.innerHTML = `<img src="${url}" alt="Captura">`;
-          screenshotContainer.appendChild(div);
-        });
-      } else {
-        screenshotContainer.innerHTML = '<em>No hay capturas disponibles.</em>';
       }
+    });
+
+    // === Mostrar Participantes ===
+    const participantList = document.getElementById('participant-list');
+    participantList.innerHTML = '';
+    dataFromServer.participants.forEach(p => {
+      const li = document.createElement('li');
+      li.textContent = `${p.name} (${p.user_id})`;
+      participantList.appendChild(li);
+    });
+
+    // === Mostrar Transcripción ===
+    const transcriptionText = document.getElementById('transcription-text');
+    transcriptionText.textContent = dataFromServer.transcription || 'No disponible';
+
+    // === Mostrar Chat ===
+    const chatContainer = document.getElementById('chat-container');
+    chatContainer.innerHTML = '';
+    if (Array.isArray(dataFromServer.chat_messages)) {
+      dataFromServer.chat_messages.forEach(msg => {
+        const div = document.createElement('div');
+        div.className = 'chat-message';
+        div.innerHTML = `<strong>${msg.user_id}</strong> (${new Date(msg.timestamp).toLocaleTimeString()}):<br>${msg.message}`;
+        chatContainer.appendChild(div);
+      });
+    } else {
+      chatContainer.innerHTML = '<em>No hay mensajes en el chat.</em>';
+    }
+
+    // === Mostrar Capturas ===
+    const screenshotContainer = document.getElementById('screenshot-container');
+    screenshotContainer.innerHTML = '';
+    if (Array.isArray(dataFromServer.screenshots)) {
+      dataFromServer.screenshots.forEach(url => {
+        const div = document.createElement('div');
+        div.className = 'screenshot';
+        div.innerHTML = `<img src="${url}" alt="Captura">`;
+        screenshotContainer.appendChild(div);
+      });
+    } else {
+      screenshotContainer.innerHTML = '<em>No hay capturas disponibles.</em>';
+    }
+
+    // === Mostrar Grabación ===
+    const recordingLink = document.getElementById('recording-link');
+    if (dataFromServer.recording_url) {
+      recordingLink.href = dataFromServer.recording_url;
+      recordingLink.textContent = 'Descargar grabación';
+    } else {
+      recordingLink.textContent = 'No disponible';
+      recordingLink.removeAttribute('href');
     }
   </script>
 
