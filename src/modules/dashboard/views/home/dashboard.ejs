@@ -1,63 +1,147 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Dashboard</title>
-    <!-- Cargar Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  </head>
-  <body>
-    <h1>📊 Dashboard</h1>
+<head>
+  <meta charset="UTF-8" />
+  <title>Dashboard</title>
+  <!-- Cargar Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> 
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+    }
 
-    <!-- Contenedor invisible para pasar datos desde EJS -->
-    <div id="app" style="display: none" data-api="<%= data %>"></div>
+    h2 {
+      color: #333;
+    }
 
-    <canvas id="myChart" width="400" height="200"></canvas>
+    .section {
+      margin-bottom: 30px;
+    }
 
-    <script>
-      // Recuperar los datos inyectados desde el servidor
-      const appDiv = document.getElementById("app");
-      const rawData = appDiv.getAttribute("data-api");
+    .participant-list li,
+    .screenshot {
+      margin: 10px 0;
+    }
 
-      let dataFromServer = null;
+    .screenshot img {
+      max-width: 400px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
 
-      try {
-        dataFromServer = JSON.parse(rawData);
-      } catch (e) {
-        console.error("Error al parsear los datos:", e);
-      }
+  <h1>📊 Dashboard de la Reunión</h1>
 
-      if (dataFromServer && Array.isArray(dataFromServer.values)) {
-        const labels = dataFromServer.values.map(
-          (_, index) => `Item ${index + 1}`
-        );
-        const values = dataFromServer.values;
+  <!-- Datos inyectados desde el backend -->
+  <div id="app" style="display:none;" data-api='<%= data %>'></div>
 
-        const ctx = document.getElementById("myChart").getContext("2d");
-        new Chart(ctx, {
-          type: "bar",
-          data: {
-            labels: labels,
-            datasets: [
-              {
-                label: "Valores desde API",
-                data: values,
-                backgroundColor: "rgba(54, 162, 235, 0.6)",
-              },
-            ],
-          },
-          options: {
-            responsive: true,
-            scales: {
-              y: {
-                beginAtZero: true,
-              },
-            },
-          },
-        });
-      } else {
-        console.warn("No se encontraron datos válidos para graficar.");
-      }
-    </script>
-  </body>
+  <!-- Sección: Participantes -->
+  <div class="section">
+    <h2>🧾 Participantes</h2>
+    <ul class="participant-list">
+      <!-- Será rellenado con JS -->
+    </ul>
+  </div>
+
+  <!-- Sección: Transcripción -->
+  <div class="section">
+    <h2>📄 Transcripción</h2>
+    <p id="transcription-text">
+      <!-- Será rellenado con JS -->
+    </p>
+  </div>
+
+  <!-- Sección: Capturas de Pantalla -->
+  <div class="section">
+    <h2>🖼️ Capturas de Pantalla</h2>
+    <div class="screenshot" id="screenshot-container">
+      <!-- Serán rellenadas con JS -->
+    </div>
+  </div>
+
+  <!-- Sección: Gráfico -->
+  <div class="section">
+    <h2>📊 Gráfico Informativo</h2>
+    <canvas id="summaryChart" width="400" height="200"></canvas>
+  </div>
+<script>
+  const appDiv = document.getElementById('app');
+  const rawData = appDiv.getAttribute('data-api');
+
+  let dataFromServer = null;
+
+  try {
+    dataFromServer = JSON.parse(rawData);
+  } catch (e) {
+    console.error('Error al parsear los datos:', e);
+  }
+
+  if (!dataFromServer) {
+    document.body.innerHTML = '<h2>⚠️ No se recibieron datos válidos.</h2>';
+    throw new Error('Datos inválidos o nulos');
+  }
+
+  // === Mostrar Participantes - con validación ===
+  const participantList = document.querySelector('.participant-list');
+  if (Array.isArray(dataFromServer.participants)) {
+    dataFromServer.participants.forEach(p => {
+      const li = document.createElement('li');
+      li.textContent = `${p.name} (${p.user_id})`;
+      participantList.appendChild(li);
+    });
+  } else {
+    participantList.innerHTML = '<em>No hay participantes</em>';
+  }
+
+  // === Mostrar Transcripción ===
+  const transcriptionText = document.getElementById('transcription-text');
+  transcriptionText.textContent = dataFromServer.transcription || 'No disponible';
+
+  // === Mostrar Capturas ===
+  const screenshotContainer = document.getElementById('screenshot-container');
+  if (Array.isArray(dataFromServer.screenshots)) {
+    dataFromServer.screenshots.forEach(url => {
+      const div = document.createElement('div');
+      div.className = 'screenshot';
+      div.innerHTML = `<img src="${url}" alt="Captura">`;
+      screenshotContainer.appendChild(div);
+    });
+  } else {
+    screenshotContainer.innerHTML = '<em>No hay capturas disponibles</em>';
+  }
+
+  // === Generar Gráfico Simple ===
+  const ctx = document.getElementById('summaryChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Participantes', 'Capturas'],
+      datasets: [{
+        label: 'Cantidad',
+        data: [
+          Array.isArray(dataFromServer.participants) ? dataFromServer.participants.length : 0,
+          Array.isArray(dataFromServer.screenshots) ? dataFromServer.screenshots.length : 0
+        ],
+        backgroundColor: [
+          'rgba(54, 162, 235, 0.6)',
+          'rgba(255, 99, 132, 0.6)'
+        ]
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { stepSize: 1 }
+        }
+      },
+      plugins: { legend: { display: false } }
+    }
+  });
+</script>
+</body>
 </html>

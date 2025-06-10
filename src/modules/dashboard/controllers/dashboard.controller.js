@@ -1,18 +1,17 @@
 import { fetchDataFromAPI } from "../services/dashboard.service.js";
 
+/**
+ * Controlador para mostrar dashboard con datos de la API
+ * @param req
+ * @param res
+ */
 export const getDashboard = async (req, res) => {
   try {
     const apiData = await fetchDataFromAPI();
-
-    // Ejemplo: solo pasamos un campo seguro
-    const safeData = {
-      values: Array.isArray(apiData.values)
-        ? apiData.values.map((v) => parseFloat(v) || 0)
-        : [],
-    };
+    console.log("Datos recibidos de la API:", apiData); // 👈 Verifica aquí
 
     res.render("dashboard/views/home/dashboard", {
-      data: JSON.stringify(safeData), // Pasamos ya como JSON string
+      data: JSON.stringify(apiData)
     });
   } catch (error) {
     console.error("Error en el controlador:", error);
