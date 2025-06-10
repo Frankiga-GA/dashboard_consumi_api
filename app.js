@@ -2,6 +2,7 @@ import express from "express";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
+import dashboardRoutes from "./src/modules/dashboard/routes/dashboard.route.js";
 
 // Cargar variables de entorno
 dotenv.config();
@@ -21,14 +22,7 @@ app.use(express.static("public"));
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "src", "modules"));
 
-app.get("/", async (req, res) => {
-  try {
-    res.render("dashboard/views/home/dashboard");
-  } catch (error) {
-    console.error("Error al cargar la página de inicio:", error);
-    res.status(500).send("Error al cargar la página de inicio");
-  }
-});
+app.use('/', dashboardRoutes);
 
 app.listen(PORT, () => {
   console.log(`🕺 I'M ALIVE => PORT: ${PORT}`);

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Dashboard</title>
+    <!-- Cargar Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <h1>📊 Dashboard</h1>
+
+    <!-- Contenedor invisible para pasar datos desde EJS -->
+    <div id="app" style="display: none" data-api="<%= data %>"></div>
+
+    <canvas id="myChart" width="400" height="200"></canvas>
+
+    <script>
+      // Recuperar los datos inyectados desde el servidor
+      const appDiv = document.getElementById("app");
+      const rawData = appDiv.getAttribute("data-api");
+
+      let dataFromServer = null;
+
+      try {
+        dataFromServer = JSON.parse(rawData);
+      } catch (e) {
+        console.error("Error al parsear los datos:", e);
+      }
+
+      if (dataFromServer && Array.isArray(dataFromServer.values)) {
+        const labels = dataFromServer.values.map(
+          (_, index) => `Item ${index + 1}`
+        );
+        const values = dataFromServer.values;
+
+        const ctx = document.getElementById("myChart").getContext("2d");
+        new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: "Valores desde API",
+                data: values,
+                backgroundColor: "rgba(54, 162, 235, 0.6)",
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            scales: {
+              y: {
+                beginAtZero: true,
+              },
+            },
+          },
+        });
+      } else {
+        console.warn("No se encontraron datos válidos para graficar.");
+      }
+    </script>
+  </body>
+</html>
